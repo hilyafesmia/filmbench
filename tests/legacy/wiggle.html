@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+      Wigglegram Maker - Create 3D GIFs from Nishika N8000, Nimslo & Reto 3D
+    </title>
+    <meta
+      name="description"
+      content="Free online tool to create stabilized 3D Wigglegrams (Stereoscopic GIFs) from multiple photos. Perfect for Nishika N8000, Nimslo, and Reto 3D film scans. No sign-up required."
+    />
+    <meta
+      name="keywords"
+      content="Wigglegram, 3D GIF, Nishika N8000, Nimslo, Reto 3D, Stereoscopic, Parallax Effect, Film Photography, GIF Maker, Mura Masa Effect"
+    />
+    <!-- Styles -->
+    <style>
+      :root {
+        --primary: #4f46e5;
+        --bg: #f3f4f6;
+        --surface: #ffffff;
+        --text: #1f2937;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Helvetica, Arial, sans-serif;
+        background-color: var(--bg);
+        color: var(--text);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 2rem;
+        margin: 0;
+      }
+
+      h1 {
+        margin-bottom: 0.5rem;
+      }
+      p {
+        color: #6b7280;
+        margin-bottom: 2rem;
+        text-align: center;
+      }
+
+      .container {
+        background: var(--surface);
+        padding: 2rem;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        max-width: 800px;
+        width: 100%;
+        text-align: center;
+      }
+
+      /* Upload Zone */
+      .upload-zone {
+        border: 2px dashed #d1d5db;
+        padding: 3rem;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: border-color 0.2s;
+        margin-bottom: 1.5rem;
+      }
+      .upload-zone:hover {
+        border-color: var(--primary);
+      }
+
+      /* Canvas & Preview */
+      #canvas-container {
+        position: relative;
+        margin: 1rem auto;
+        max-width: 100%;
+        overflow: hidden;
+        display: none;
+        border: 1px solid #e5e7eb;
+        border-radius: 4px;
+      }
+
+      canvas {
+        max-width: 100%;
+        height: auto;
+        display: block;
+        cursor: crosshair;
+      }
+
+      #result-container {
+        display: none;
+        margin-top: 2rem;
+        border-top: 1px solid #e5e7eb;
+        padding-top: 2rem;
+      }
+
+      /* Controls */
+      .btn {
+        background-color: var(--primary);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 1rem;
+        transition: opacity 0.2s;
+        margin: 0.5rem;
+      }
+      .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .btn-secondary {
+        background-color: #4b5563;
+      }
+      .btn-warning {
+        background-color: #d97706;
+      }
+
+      .status {
+        margin-top: 1rem;
+        font-weight: 500;
+        color: var(--primary);
+        min-height: 2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+      }
+
+      /* Spinner */
+      .loader {
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid var(--primary);
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .hidden {
+        display: none !important;
+      }
+
+      .controls-area {
+        margin-top: 10px;
+      }
+    </style>
+
+    <!-- Scripts: face-api.js and gif.js -->
+    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
+  </head>
+  <body>
+    <h1>Wigglegram Maker</h1>
+    <p>
+      Upload horizontal burst photos, click a face to stabilize, and export a
+      3D-like GIF.<br />Your photos never leave your browser. No sign-up
+      required.
+    </p>
+
+    <div class="container">
+      <!-- Step 1: Upload -->
+      <div id="step-upload">
+        <div
+          class="upload-zone"
+          onclick="document.getElementById('file-input').click()"
+        >
+          <p>Click to upload images (Select multiple)</p>
+          <input
+            type="file"
+            id="file-input"
+            multiple
+            accept="image/*"
+            style="display: none"
+            onchange="handleFiles(this.files)"
+          />
+        </div>
+      </div>
+
+      <!-- Status Message & Loader -->
+      <div class="status">
+        <div id="loader" class="loader hidden"></div>
+        <span id="status-msg"></span>
+      </div>
+
+      <!-- Step 2: Face Selection / Manual Pinning -->
+      <div id="step-select" class="hidden">
+        <p id="instruction-text">
+          <strong>Select a face</strong> in the reference image (highlighted
+          below) to anchor the animation.
+        </p>
+
+        <div class="controls-area">
+          <button
+            id="btn-manual"
+            class="btn btn-warning"
+            onclick="startManualMode()"
+          >
+            Use Manual Mode
+          </button>
+        </div>
+
+        <div id="canvas-container">
+          <canvas id="main-canvas"></canvas>
+        </div>
+      </div>
+
+      <!-- Step 3: Result -->
+      <div id="result-container">
+        <h3>Result</h3>
+        <img
+          id="gif-output"
+          alt="Generated Wigglegram"
+          style="
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+          "
+        />
+        <br /><br />
+        <a id="download-link" class="btn" download="wigglegram.gif"
+          >Download GIF</a
+        >
+        <button class="btn btn-secondary" onclick="location.reload()">
+          Start Over
+        </button>
+      </div>
+    </div>
+
+    <script>
+      // --- Global State ---
+      let images = []; // Array of Image objects
+      let referenceIndex = 0;
+      const MODEL_URL =
+        "https://justadudewhohacks.github.io/face-api.js/models";
+
+      // Manual Mode State
+      let isManualMode = false;
+      let manualPoints = [];
+      let currentManualIndex = 0;
+
+      // --- DOM Elements ---
+      const statusMsg = document.getElementById("status-msg");
+      const loader = document.getElementById("loader");
+      const canvas = document.getElementById("main-canvas");
+      const canvasContainer = document.getElementById("canvas-container");
+      const stepUpload = document.getElementById("step-upload");
+      const stepSelect = document.getElementById("step-select");
+      const resultContainer = document.getElementById("result-container");
+      const instructionText = document.getElementById("instruction-text");
+      const btnManual = document.getElementById("btn-manual");
+
+      // --- Helper: UI State ---
+      function setStatus(msg, isLoading = false) {
+        statusMsg.textContent = msg;
+        if (isLoading) {
+          loader.classList.remove("hidden");
+        } else {
+          loader.classList.add("hidden");
+        }
+      }
+
+      // --- Initialization ---
+      async function loadModels() {
+        setStatus("Loading AI models...", true);
+        try {
+          // Load TinyFaceDetector and Landmarks (lighter/faster for browser)
+          await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+          await faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL);
+          setStatus("Models loaded. Ready for images.");
+        } catch (err) {
+          setStatus("Error loading models. Check console.");
+          console.error(err);
+        }
+      }
+
+      window.onload = loadModels;
+
+      // --- File Handling ---
+      async function handleFiles(fileList) {
+        if (fileList.length < 2) {
+          setStatus("Please select at least 2 images.");
+          return;
+        }
+
+        // 1. Sort files by name
+        const files = Array.from(fileList).sort((a, b) =>
+          a.name.localeCompare(b.name)
+        );
+
+        setStatus("Processing images...", true);
+        stepUpload.classList.add("hidden");
+
+        try {
+          // 2. Load images into DOM elements
+          images = await Promise.all(files.map((file) => loadImage(file)));
+
+          // 3. Determine Reference Image (Middle Index)
+          referenceIndex = Math.floor((images.length - 1) / 2);
+
+          setStatus(
+            `Analysing Reference Image (${referenceIndex + 1}/${
+              images.length
+            })...`,
+            true
+          );
+
+          // 4. Setup Canvas for Selection
+          await setupReferenceCanvas();
+        } catch (error) {
+          console.error(error);
+          setStatus("Error loading images.");
+          stepUpload.classList.remove("hidden");
+        }
+      }
+
+      function loadImage(file) {
+        return new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.onerror = reject;
+          img.src = URL.createObjectURL(file);
+        });
+      }
+
+      // --- AI Face Detection & Selection UI ---
+      async function setupReferenceCanvas() {
+        const refImg = images[referenceIndex];
+
+        // Set canvas to full resolution of the image
+        canvas.width = refImg.width;
+        canvas.height = refImg.height;
+        const ctx = canvas.getContext("2d");
+
+        // Draw Reference Image
+        ctx.drawImage(refImg, 0, 0);
+
+        stepSelect.classList.remove("hidden");
+        canvasContainer.style.display = "block";
+
+        // Detect Faces
+        const options = new faceapi.TinyFaceDetectorOptions();
+        const detections = await faceapi
+          .detectAllFaces(canvas, options)
+          .withFaceLandmarks(true);
+
+        if (detections.length === 0) {
+          setStatus("No faces found. Use Manual Mode to pin points.");
+          btnManual.classList.remove("hidden");
+          // Ensure manual mode listener isn't active yet, but let user click the button
+          canvas.onclick = null;
+          return;
+        }
+
+        setStatus(
+          `Found ${detections.length} face(s). Click one OR use Manual Mode.`
+        );
+
+        // Draw bounding boxes
+        ctx.strokeStyle = "#00FF00";
+        ctx.lineWidth = 4;
+        detections.forEach((det) => {
+          const box = det.detection.box;
+          ctx.strokeRect(box.x, box.y, box.width, box.height);
+        });
+
+        // Add Click Listener for AI selection
+        canvas.onclick = (e) => handleAIClick(e, detections, refImg);
+      }
+
+      // --- Manual Mode Workflow ---
+      function startManualMode() {
+        isManualMode = true;
+        manualPoints = [];
+        currentManualIndex = 0;
+
+        // UI Updates
+        btnManual.classList.add("hidden"); // Hide button once started
+        instructionText.innerHTML =
+          "<strong>Manual Pinning:</strong> Click the exact same spot (e.g., nose tip) on every image.";
+
+        // Clear previous listeners
+        canvas.onclick = handleManualClick;
+
+        showNextManualImage();
+      }
+
+      function showNextManualImage() {
+        if (currentManualIndex >= images.length) {
+          // All points collected
+          finishManualCollection();
+          return;
+        }
+
+        const img = images[currentManualIndex];
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0);
+
+        setStatus(
+          `Manual Mode: Click the nose on Image ${currentManualIndex + 1} of ${
+            images.length
+          }`
+        );
+      }
+
+      function handleManualClick(e) {
+        // Get coordinates
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const x = (e.clientX - rect.left) * scaleX;
+        const y = (e.clientY - rect.top) * scaleY;
+
+        // Draw a marker so user knows they clicked
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "red";
+        ctx.beginPath();
+        ctx.arc(x, y, 10, 0, 2 * Math.PI);
+        ctx.fill();
+
+        // Store point
+        manualPoints.push({ x, y });
+
+        // Move to next
+        currentManualIndex++;
+
+        // Short delay to show the click marker
+        setTimeout(showNextManualImage, 100);
+      }
+
+      function finishManualCollection() {
+        canvas.onclick = null;
+        setStatus("Points collected. Generating GIF...", true);
+
+        // Prepare data package for generator
+        const data = {
+          type: "manual",
+          points: manualPoints,
+        };
+
+        setTimeout(() => {
+          generateGIF(data);
+        }, 50);
+      }
+
+      // --- AI Click Handler ---
+      async function handleAIClick(event, detections, refImg) {
+        // Get click coordinates relative to canvas/image scale
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+
+        const clickX = (event.clientX - rect.left) * scaleX;
+        const clickY = (event.clientY - rect.top) * scaleY;
+
+        // Find which face was clicked
+        const clickedFace = detections.find((det) => {
+          const { x, y, width, height } = det.detection.box;
+          return (
+            clickX >= x &&
+            clickX <= x + width &&
+            clickY >= y &&
+            clickY <= y + height
+          );
+        });
+
+        if (!clickedFace) return;
+
+        // Remove listener
+        canvas.onclick = null;
+        btnManual.classList.add("hidden"); // Cannot switch to manual mid-processing
+
+        setStatus("Stabilizing sequence... this may take a moment.", true);
+
+        const refNose = clickedFace.landmarks.getNose()[3]; // Tip of nose
+
+        // Reset canvas visual to clean boxes
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(refImg, 0, 0);
+
+        const data = {
+          type: "ai",
+          refNose: refNose,
+          refBox: clickedFace.detection.box,
+        };
+
+        setTimeout(() => {
+          generateGIF(data);
+        }, 50);
+      }
+
+      // --- WORKER LOADER FIX ---
+      async function getWorkerBlob() {
+        const response = await fetch(
+          "https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js"
+        );
+        const blob = await response.blob();
+        return URL.createObjectURL(blob);
+      }
+
+      // --- Core Logic: Alignment & Generation ---
+      // data: { type: 'manual'|'ai', points: [] (manual), refNose: {}, refBox: {} (ai) }
+      async function generateGIF(data) {
+        try {
+          // Fetch worker blob first
+          const workerUrl = await getWorkerBlob();
+
+          const gif = new GIF({
+            workers: 2,
+            quality: 10,
+            width: images[0].width,
+            height: images[0].height,
+            workerScript: workerUrl,
+          });
+
+          const ctx = canvas.getContext("2d");
+          const options = new faceapi.TinyFaceDetectorOptions();
+
+          // Process all images
+          for (let i = 0; i < images.length; i++) {
+            const img = images[i];
+            let offsetX = 0;
+            let offsetY = 0;
+
+            if (data.type === "manual") {
+              // --- Manual Mode Logic ---
+              // Offset = Reference Point - Current Point
+              const refPoint = data.points[referenceIndex];
+              const targetPoint = data.points[i];
+              offsetX = refPoint.x - targetPoint.x;
+              offsetY = refPoint.y - targetPoint.y;
+            } else {
+              // --- AI Mode Logic ---
+              if (i === referenceIndex) {
+                offsetX = 0;
+                offsetY = 0;
+              } else {
+                // Detect faces
+                const detections = await faceapi
+                  .detectAllFaces(img, options)
+                  .withFaceLandmarks(true);
+
+                if (detections.length > 0) {
+                  // Find closest face
+                  const refBox = data.refBox;
+                  const refNose = data.refNose;
+
+                  const refCenterX = refBox.x + refBox.width / 2;
+                  const refCenterY = refBox.y + refBox.height / 2;
+
+                  let bestMatch = null;
+                  let minDist = Infinity;
+
+                  detections.forEach((det) => {
+                    const box = det.detection.box;
+                    const centerX = box.x + box.width / 2;
+                    const centerY = box.y + box.height / 2;
+                    const dist = Math.hypot(
+                      centerX - refCenterX,
+                      centerY - refCenterY
+                    );
+
+                    if (dist < minDist) {
+                      minDist = dist;
+                      bestMatch = det;
+                    }
+                  });
+
+                  if (bestMatch) {
+                    const targetNose = bestMatch.landmarks.getNose()[3];
+                    offsetX = refNose.x - targetNose.x;
+                    offsetY = refNose.y - targetNose.y;
+                  }
+                }
+              }
+            }
+
+            // --- NO-GAP RENDERING STRATEGY ---
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 1. Base Layer (Reference Image at 0,0)
+            ctx.drawImage(images[referenceIndex], 0, 0);
+
+            // 2. Foreground Layer (Aligned Frame)
+            ctx.drawImage(img, offsetX, offsetY);
+
+            // Add frame to GIF buffer
+            const frameCanvas = document.createElement("canvas");
+            frameCanvas.width = canvas.width;
+            frameCanvas.height = canvas.height;
+            frameCanvas.getContext("2d").drawImage(canvas, 0, 0);
+            images[i].processedFrame = frameCanvas;
+          }
+
+          // Construct Boomerang Sequence
+          let sequenceIndices = [];
+          for (let i = 0; i < images.length; i++) sequenceIndices.push(i);
+          for (let i = images.length - 2; i > 0; i--) sequenceIndices.push(i);
+
+          sequenceIndices.forEach((idx) => {
+            gif.addFrame(images[idx].processedFrame, { delay: 100 });
+          });
+
+          gif.on("finished", function (blob) {
+            const url = URL.createObjectURL(blob);
+            const resultImg = document.getElementById("gif-output");
+            const dlLink = document.getElementById("download-link");
+
+            resultImg.src = url;
+            dlLink.href = url;
+
+            stepSelect.classList.add("hidden");
+            resultContainer.style.display = "block";
+            setStatus("Done!");
+          });
+
+          setStatus("Rendering GIF (this might take a few seconds)...", true);
+          gif.render();
+        } catch (e) {
+          console.error(e);
+          setStatus("Error generating GIF. See console for details.");
+        }
+      }
+    </script>
+  </body>
+</html>

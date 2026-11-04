@@ -1,0 +1,12 @@
+{
+  "name": "filmbench",
+  "private": true,
+  "description": "Browser tools for film photographers. The site itself has no build step; this file only exists for the dev-only test suite.",
+  "scripts": {
+    "serve": "python3 -m http.server 4173",
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0"
+  }
+}

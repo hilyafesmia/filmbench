@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wiggle — Filmbench</title>
+  <meta name="description" content="Make stabilized wigglegrams (3D GIFs) from Nimslo, Nishika N8000, Reto 3D and other multi-lens film camera scans. Runs in your browser; nothing is uploaded.">
+  <meta name="keywords" content="Wigglegram, 3D GIF, Nishika N8000, Nimslo, Reto 3D, Stereoscopic, Film Photography">
+  <link rel="stylesheet" href="../assets/css/theme.css">
+  <style>
+    #stage-canvas, #result {
+      display: block;
+      max-width: 100%;
+    }
+    #stage-canvas.is-picking { cursor: pointer; }
+    #stage-canvas.is-pinning { cursor: crosshair; touch-action: none; }
+    .strip { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 2px; }
+    .strip li {
+      display: grid;
+      grid-template-columns: 28px 1fr auto;
+      gap: 8px;
+      align-items: baseline;
+      padding: 4px 8px;
+      background: var(--surface);
+    }
+    .strip .n { color: var(--faint); }
+    .strip .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+    .strip .tag { color: var(--accent); }
+    .strip li.is-current { box-shadow: inset 2px 0 0 var(--accent); }
+    .strip li.is-pinned .n { color: var(--accent); }
+    .align-status { margin: 12px 0 0; min-height: 20px; color: var(--dim); font-size: 13px; }
+    .pin-row { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
+    .pin-row[hidden] { display: none; }
+    .row-actions { display: flex; gap: 8px; margin-top: 12px; }
+    .row-actions > * { flex: 1; }
+    .warn { color: var(--text); }
+    .warn strong { color: var(--accent); font-weight: 600; }
+  </style>
+  <script defer src="../vendor/face-api/face-api.min.js"></script>
+  <script defer src="../vendor/gif.js/gif.js"></script>
+</head>
+<body class="app">
+  <header class="topbar">
+    <a class="wordmark" href="../">FILMBENCH</a>
+    <nav class="toolnav" aria-label="Tools">
+      <a href="../crop/">Crop</a>
+      <a href="./" aria-current="page">Wiggle</a>
+    </nav>
+  </header>
+
+  <main class="workspace">
+    <aside class="rail" aria-label="Wigglegram steps">
+      <section class="step" id="step-frames" aria-labelledby="s1">
+        <h2 class="step-head" id="s1"><span class="step-num">01</span> Frames</h2>
+        <label class="btn btn-block file-btn">
+          Choose frames…
+          <input type="file" id="frames-input" multiple accept="image/*,.tif,.tiff,.heic,.heif">
+        </label>
+        <ol class="strip" id="strip" aria-label="Frames in order"></ol>
+        <div class="notice" id="frames-notice" role="alert"></div>
+      </section>
+
+      <section class="step" id="step-align" aria-labelledby="s2" aria-disabled="true">
+        <h2 class="step-head" id="s2"><span class="step-num">02</span> Align</h2>
+        <fieldset class="segmented" id="modes">
+          <legend class="visually-hidden">Alignment method</legend>
+          <div class="choice"><input type="radio" name="mode" id="m-auto" value="auto" checked><label for="m-auto">Auto (faces)</label></div>
+          <div class="choice"><input type="radio" name="mode" id="m-manual" value="manual"><label for="m-manual">Manual pins</label></div>
+        </fieldset>
+        <div class="align-status" id="align-status" aria-live="polite"></div>
+        <div class="pin-row" id="pin-row" hidden>
+          <span class="readout" id="pin-counter"></span>
+          <button class="btn btn-quiet" id="undo-pin" type="button" disabled>Undo pin</button>
+        </div>
+      </section>
+
+      <section class="step" id="step-output" aria-labelledby="s3" aria-disabled="true">
+        <h2 class="step-head" id="s3"><span class="step-num">03</span> Output</h2>
+        <fieldset class="choices" id="sizes">
+          <legend class="visually-hidden">GIF size (long edge)</legend>
+          <div class="choice"><input type="radio" name="size" id="z1080" value="1080" checked><label for="z1080">Social <span class="readout">1080 px</span></label></div>
+          <div class="choice"><input type="radio" name="size" id="z1600" value="1600"><label for="z1600">Large <span class="readout">1600 px</span></label></div>
+          <div class="choice"><input type="radio" name="size" id="zorig" value="original"><label for="zorig">Original <span class="readout" id="orig-size">full size</span></label></div>
+        </fieldset>
+        <div class="notice" id="size-note"></div>
+        <button class="btn btn-primary btn-block" id="render-btn" style="margin-top:14px" disabled>Render GIF</button>
+        <div class="progress" id="progress" hidden><span></span></div>
+        <div class="notice" id="output-notice" aria-live="polite"></div>
+        <div class="row-actions" id="result-actions" hidden>
+          <a class="btn btn-primary" id="download-gif" download="wigglegram.gif">Download GIF</a>
+          <button class="btn" id="start-over" type="button">Start over</button>
+        </div>
+      </section>
+    </aside>
+
+    <section class="stage" id="stage" aria-label="Preview">
+      <div class="empty" id="empty">
+        <h1>Make a wigglegram</h1>
+        <p>Choose 2 or more frames from one shot, e.g. the four half-frames from a Nimslo or Nishika. They're ordered by file name, and the middle frame is the reference.</p>
+        <span class="readout">Drop files here · JPEG · PNG · WEBP</span>
+      </div>
+      <canvas id="stage-canvas" hidden></canvas>
+      <img id="result" alt="Rendered wigglegram" hidden>
+    </section>
+  </main>
+
+  <footer class="statusbar">
+    <span class="readout">Frames <b id="ro-frames">—</b></span>
+    <span class="readout">Ref <b id="ro-ref">—</b></span>
+    <span class="readout">Source <b id="ro-source">—</b></span>
+    <span class="readout">GIF <b id="ro-out">—</b></span>
+    <span class="spacer"></span>
+    <span class="readout">Processed locally</span>
+  </footer>
+
+  <script type="module" src="wiggle.js"></script>
+</body>
+</html>

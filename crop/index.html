@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crop — Filmbench</title>
+  <meta name="description" content="Crop film scans to 1.85, 2.35, 2.6, 2.77 or a custom ratio at original resolution and format. Runs in your browser; nothing is uploaded.">
+  <link rel="stylesheet" href="../assets/css/theme.css">
+  <style>
+    .crop-wrap {
+      position: relative;
+      overflow: hidden;
+      line-height: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .crop-wrap img {
+      display: block;
+      -webkit-user-drag: none;
+      pointer-events: none;
+    }
+    #crop-frame {
+      position: absolute;
+      border: 1px solid var(--accent);
+      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.62);
+      cursor: move;
+      touch-action: none;
+    }
+    #crop-frame::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(to right, rgba(255, 255, 255, 0.18) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.18) 1px, transparent 1px);
+      background-size: 33.333% 33.333%;
+      background-position: -1px -1px;
+      pointer-events: none;
+    }
+    #crop-frame:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    #crop-frame.is-dragging { cursor: grabbing; }
+    .file-line { margin-top: 10px; min-height: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #custom-fields[hidden] { display: none; }
+  </style>
+</head>
+<body class="app">
+  <header class="topbar">
+    <a class="wordmark" href="../">FILMBENCH</a>
+    <nav class="toolnav" aria-label="Tools">
+      <a href="./" aria-current="page">Crop</a>
+      <a href="../wiggle/">Wiggle</a>
+    </nav>
+  </header>
+
+  <main class="workspace">
+    <aside class="rail" aria-label="Crop steps">
+      <section class="step" aria-labelledby="s1">
+        <h2 class="step-head" id="s1"><span class="step-num">01</span> Scan</h2>
+        <label class="btn btn-block file-btn">
+          Open scan…
+          <input type="file" id="scan-input" accept="image/*,.tif,.tiff,.heic,.heif">
+        </label>
+        <div class="file-line readout filename" id="file-line" aria-live="polite"></div>
+        <div class="notice" id="open-notice" role="alert"></div>
+      </section>
+
+      <section class="step" aria-labelledby="s2">
+        <h2 class="step-head" id="s2"><span class="step-num">02</span> Ratio</h2>
+        <fieldset class="choices" id="ratios">
+          <legend class="visually-hidden">Aspect ratio</legend>
+          <div class="choice"><input type="radio" name="ratio" id="r185" value="1.85" checked><label for="r185">Widescreen <span class="readout">1.85:1</span></label></div>
+          <div class="choice"><input type="radio" name="ratio" id="r235" value="2.35"><label for="r235">Anamorphic <span class="readout">2.35:1</span></label></div>
+          <div class="choice"><input type="radio" name="ratio" id="r26" value="2.6"><label for="r26">Cinematic <span class="readout">2.6:1</span></label></div>
+          <div class="choice"><input type="radio" name="ratio" id="r277" value="2.77"><label for="r277">Cinerama <span class="readout">2.77:1</span></label></div>
+          <div class="choice"><input type="radio" name="ratio" id="rcustom" value="custom"><label for="rcustom">Custom <span class="readout">W:H</span></label></div>
+        </fieldset>
+        <form class="ratio-fields" id="custom-fields" hidden>
+          <input class="input" type="number" id="custom-w" value="16" min="0.01" step="any" aria-label="Width">
+          <span class="readout">:</span>
+          <input class="input" type="number" id="custom-h" value="9" min="0.01" step="any" aria-label="Height">
+          <button class="btn" type="submit">Apply ratio</button>
+        </form>
+        <p class="step-hint" style="margin:14px 0 0">Drag the frame to compose. Arrow keys nudge it; hold Shift for bigger steps.</p>
+      </section>
+
+      <section class="step" aria-labelledby="s3">
+        <h2 class="step-head" id="s3"><span class="step-num">03</span> Export</h2>
+        <button class="btn btn-primary btn-block" id="download-btn" disabled aria-describedby="export-notice">Download crop</button>
+        <div class="notice" id="export-notice" aria-live="polite">Open a scan first.</div>
+      </section>
+    </aside>
+
+    <section class="stage" id="stage" aria-label="Preview">
+      <div class="empty" id="empty">
+        <h1>Open a scan to crop</h1>
+        <p>Drop a file here or use <em>Open scan</em>. The export keeps the scan's full resolution and its file format.</p>
+        <span class="readout">JPEG · PNG · WEBP — TIFF/HEIC in Safari</span>
+      </div>
+      <div class="crop-wrap" id="crop-wrap" hidden>
+        <img id="preview" alt="">
+        <div id="crop-frame" tabindex="0" role="group" aria-label="Crop frame — drag or use arrow keys to move"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="statusbar">
+    <span class="readout">Original <b id="ro-original">—</b></span>
+    <span class="readout">Crop <b id="ro-crop">—</b></span>
+    <span class="readout">Format <b id="ro-format">—</b></span>
+    <span class="spacer"></span>
+    <span class="readout">Processed locally</span>
+  </footer>
+
+  <script type="module" src="crop.js"></script>
+</body>
+</html>

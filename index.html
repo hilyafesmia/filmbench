@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Filmbench — browser tools for film photographers</title>
+  <meta name="description" content="Crop film scans to cinematic ratios at full resolution and make stabilized wigglegrams from 3D camera frames. Runs entirely in your browser.">
+  <link rel="stylesheet" href="assets/css/theme.css">
+  <style>
+    .landing { max-width: 720px; margin: 0 auto; padding: 56px 20px 40px; }
+    .landing > p:first-child { color: var(--dim); margin: 0 0 36px; max-width: 52ch; }
+    .tool-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+    .tool-list li { border-bottom: 1px solid var(--line); }
+    .tool-list a {
+      display: grid;
+      grid-template-columns: 110px 1fr auto;
+      gap: 4px 20px;
+      align-items: baseline;
+      padding: 20px 4px;
+      text-decoration: none;
+    }
+    .tool-list a:hover .tool-name { color: var(--accent); }
+    .tool-name { font-size: 16px; font-weight: 600; }
+    .tool-desc { color: var(--dim); }
+    .tool-io { grid-column: 2; }
+    .tool-go { color: var(--faint); }
+    .credits { margin: 48px 0 0; color: var(--faint); font-size: 12px; }
+    .credits a { color: var(--dim); }
+    @media (max-width: 560px) {
+      .tool-list a { grid-template-columns: 1fr auto; }
+      .tool-io { grid-column: 1; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <a class="wordmark" href="./">FILMBENCH</a>
+    <nav class="toolnav" aria-label="Tools">
+      <a href="crop/">Crop</a>
+      <a href="wiggle/">Wiggle</a>
+    </nav>
+  </header>
+
+  <main class="landing">
+    <p>Tools for working with film scans. Everything runs in your browser, so your photos are never uploaded.</p>
+
+    <ul class="tool-list">
+      <li>
+        <a href="crop/">
+          <span class="tool-name">Crop</span>
+          <span class="tool-desc">Frame a scan to a cinema ratio and export at its original resolution and format.</span>
+          <span class="tool-go" aria-hidden="true">→</span>
+          <span class="tool-io readout">1 scan → 1.85 · 2.35 · 2.6 · 2.77 · custom</span>
+        </a>
+      </li>
+      <li>
+        <a href="wiggle/">
+          <span class="tool-name">Wiggle</span>
+          <span class="tool-desc">Align frames from a Nimslo, Nishika, Reto 3D or other multi-lens camera into a steady wigglegram.</span>
+          <span class="tool-go" aria-hidden="true">→</span>
+          <span class="tool-io readout">2–8 frames → GIF · 1080 · 1600 · original</span>
+        </a>
+      </li>
+    </ul>
+
+    <p class="credits">
+      Face detection runs on your device and is only used to align frames.
+      Built with <a href="https://github.com/justadudewhohacks/face-api.js">face-api.js</a> and
+      <a href="https://github.com/jnordberg/gif.js">gif.js</a> (MIT).
+      Source on <a href="https://github.com/hilyafesmia/filmbench">GitHub</a>.
+    </p>
+  </main>
+</body>
+</html>
